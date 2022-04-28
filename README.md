@@ -4,11 +4,11 @@ Search and Destroy functionality for emails in Microsoft Exchange 2019
 # Setup Before Use
 The module must be configured with the names of your Exchange servers in order for it to work correctly.  To do this, change the following array in the Init-SDWorkspace function.
 
-$Servers = @(
-            "server1.domain.local",
-            "server2.domain.local",
-            "server3.domain.local"
-        )
+> $Servers = @(\
+>             "server1.domain.local",\
+>            "server2.domain.local",\
+>            "server3.domain.local"\
+>        )
         
 # Usage Instructions
 To manually import into PowerShell, you must first set your Execution Policy to bypass.  The below command will do so temporarily only for the PowerShell session you're running in without affecting the overall security posture of your machine.
