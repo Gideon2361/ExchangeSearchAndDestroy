@@ -54,7 +54,7 @@ Sometimes the message tracking logs don't contain the emails you're looking for 
            > New-SDSearchRequest -TicketNumber <TicketNumber> -Requester your@email.here -CsvFilePath "C:\Folder\file.csv" -Fuzzy
 
    2. Check the discovery mailbox in Outlook to verify the search preview matches what you want to purge.
-       !!! WARNING !!!  Purge is a destructive operation that cannot be undone.  You will be held responsible for the results.
+       <span style="color: rgb(75,0,0)">!!! WARNING !!!  Purge is a destructive operation that cannot be undone.</span>
 
    3. Execute the search and destroy which will purge the matching messages and clean up the search environment.
 
@@ -72,9 +72,11 @@ If you need to purge a specific email and don't wish to supply a CSV input, you 
            > $NewWorkspace |Add-MailboxPermission -User <your@email.com> -AccessRights FullAccess
 
    3. Perform the preview search.  NOTE: If the subject contains any apostraphes ('), you must escape them (`'), otherwise they will cause unreliable behavior.
+
            > New-SDSearch -TicketNumber <TicketNumber> -Fuzzy -FuzzySender <sender@domain.com> -FuzzyRecipient <recipient@domain.com> -FuzzySubject '<Subject>'
 
    4. After you review the results, perform the purge with the following command.
+
            > New-SDSearch -TicketNumber <TicketNumber> -Fuzzy -FuzzySender <sender@domain.com> -FuzzyRecipient <recipient@domain.com> -FuzzySubject '<Subject>' -Delete
   
    5. Remove the workspace.
