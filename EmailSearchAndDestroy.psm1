@@ -1,15 +1,68 @@
+#######
+# Global Configuration Section
+#######
+
+#Environment configuration
+$global:SmtpServer = $null       			# Server for sending emails
+$global:MailFrom = $null         			# Email address to use to send outbound emails
+$global:ExchangeServers = @(				# List of Exchange servers to use if autodiscovery fails
+            "server1.domain.local",
+            "server2.domain.local",
+            "server3.domain.local"
+        )
+
+$global:UseAutoDiscovery = $true			# Enables the use of Active Directory to identify Exchange servers automatically
+
+#Set Colors
+$Host.UI.RawUI.BackgroundColor = "Black"		# Console background color
+$Host.UI.RawUI.ForegroundColor = "White"		# Console foreground color
+
+########
+# DO NOT MODIFY BELOW THIS LINE
+########
+$global:ForbiddenCharacters = @("``", "[", "]", "(", ")", ":", "$", "@", "{", "}", "`"", "`'")				# These get escaped when found in input
+$global:ProductName = "Search and Destroy Module"
+$global:ProductVersion = "1.2.6.0201"
+$global:Credentials = Get-Credential -Message "Administrative Credentials"
+
 Function Prompt {
     Write-Host "[PS] " -NoNewline -ForegroundColor Yellow
-    Write-Host "S&D [$($ProductVersion)]" -NoNewline -ForegroundColor White -BackgroundColor DarkRed
+    Write-Host "S&D [$($global:ProductVersion)]" -NoNewline -ForegroundColor White -BackgroundColor DarkRed
     Write-Host " $($executionContext.SessionState.Path.CurrentLocation)>" -NoNewline -ForegroundColor White
 
     return " "
 }
 
+Function Get-ADExchangeServers {
+    try {
+        # Get domain root
+        $ConfigDN = ([adsi]"LDAP://RootDSE").configurationNamingContext
+
+        # Create searcher
+        $Searcher = [System.DirectoryServices.DirectorySearcher]::new()
+        $Searcher.SearchRoot = [System.DirectoryServices.DirectoryEntry]::new(([adsi]"LDAP://$ConfigDN").Path, $global:Credential.UserName, $global:Credential.GetNetworkCredential().Password)
+        $Searcher.Filter = "(&(objectClass=msExchPowerShellVirtualDirectory)(cn=*Default*))"
+        $Searcher.PropertiesToLoad.Add('msExchInternalHostName') |Out-Null
+
+        # Results
+        $Results = $Searcher.FindAll()
+
+        # Return array of URLs
+        $ResultURLs = $Results |%{ $_.Properties.msexchinternalhostname }
+
+        # Return results
+        $ResultURLs
+    } catch {
+        return $null
+    }
+}
+
 Function Init-SDWorkspace {
     clear
 
-    Write-Host "$ProductName [$ProductVersion]" -ForegroundColor Black -BackgroundColor Gray
+    $Host.UI.RawUI.WindowTitle = "$global:ProductName v$global:ProductVersion [$($global:Credentials.UserName)]"
+
+    Write-Host "$global:ProductName [$global:ProductVersion]" -ForegroundColor Black -BackgroundColor Gray
 
     Write-Host "Initializing..."
 
@@ -19,24 +72,31 @@ Function Init-SDWorkspace {
     #Write-JustifiedStatusOutput -Message "Connecting to Microsoft Exchange" -Pending
     $SearchMailboxTest = Get-Command Search-Mailbox -WarningAction SilentlyContinue -ErrorAction SilentlyContinue
     if($SearchMailboxTest -eq $null) {
-        $Creds = Get-Credential -Message "Exchange Administrative Account"
-
         #Try to connect
-        $Servers = @(
-            "server1.domain.local",
-            "server2.domain.local",
-            "server3.domain.local"
-        )
         $i = 0
 
         while($Connected -eq $false) {
-            if($i -ge $Servers.Count) {
+            if($global:UseAutoDiscovery) {
+                $Servers = Get-ADExchangeServers -Credential $global:Credentials
+
+                if($Servers -ne $null) {
+                    if($Servers.Count -gt 0) {
+                        $global:ExchangeServers = $Servers
+                    }
+                }
+            }
+
+            if($i -ge $global:ExchangeServers.Count) {
                 #Write-JustifiedStatusOutput -Message "Connecting to Microsoft Exchange" -Failed
                 Write-Host "FATAL: Unable to connect to Microsoft Exchange." -ForegroundColor DarkRed
                 break
             }
 
-            $Session = New-PSSession -Name E19 -ConfigurationName Microsoft.Exchange -ConnectionUri "http://$($Servers[$i])/powershell/" -Credential $Creds -WarningAction SilentlyContinue -ErrorAction SilentlyContinue
+            if($global:ExchangeServers[$i].ToLower().Contains("http")) {
+                $Session = New-PSSession -Name E19 -ConfigurationName Microsoft.Exchange -ConnectionUri $global:ExchangeServers[$i] -Credential $global:Credentials -WarningAction SilentlyContinue -ErrorAction SilentlyContinue
+            } else {
+                $Session = New-PSSession -Name E19 -ConfigurationName Microsoft.Exchange -ConnectionUri "http://$($global:ExchangeServers[$i])/powershell/" -Credential $global:Credentials -WarningAction SilentlyContinue -ErrorAction SilentlyContinue
+            }
 
             if($Session -ne $null) {
                 #Treat as success, import the session
@@ -76,7 +136,7 @@ Function Init-SDWorkspace {
     if($Connected) {
         #Write welcome
         clear
-        Write-Host "$ProductName [$ProductVersion]" -ForegroundColor Black -BackgroundColor Gray
+        Write-Host "$global:ProductName [$global:ProductVersion]" -ForegroundColor Black -BackgroundColor Gray
 
         Write-Host ""
 
@@ -694,7 +754,7 @@ Function Write-DebugMessage {
 }
 
 Function Get-SDModuleVersion {
-    Write-Host $ProductVersion
+    Write-Host $global:ProductVersion
 }
 
 Function Reload-SDModule {
@@ -880,15 +940,5 @@ Function Get-SDWorkspaceStatus ([string[]]$EmailAddresses = @(), [string]$SmtpSe
     }
 }
 
-$global:ForbiddenCharacters = @("``", "[", "]", "(", ")", ":", "$", "@", "{", "}", "`"", "`'")
-$global:SmtpServer = $null
-$global:MailFrom = "email@domain.com"
-$ProductName = "Search and Destroy Module"
-$ProductVersion = "1.2.5.0193"
-
-#Set background
-$Host.UI.RawUI.BackgroundColor = "Black"
-$Host.UI.RawUI.ForegroundColor = "White"
-
-Write-Host "$ProductName [$ProductVersion]" -ForegroundColor Black -BackgroundColor Gray
+Write-Host "$global:ProductName [$global:ProductVersion]" -ForegroundColor Black -BackgroundColor Gray
 Init-SDWorkspace
