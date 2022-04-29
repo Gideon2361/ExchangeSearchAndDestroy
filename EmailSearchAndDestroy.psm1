@@ -1,4 +1,4 @@
-﻿Function Prompt {
+Function Prompt {
     Write-Host "[PS] " -NoNewline -ForegroundColor Yellow
     Write-Host "S&D [$($ProductVersion)]" -NoNewline -ForegroundColor White -BackgroundColor DarkRed
     Write-Host " $($executionContext.SessionState.Path.CurrentLocation)>" -NoNewline -ForegroundColor White
@@ -711,7 +711,7 @@ Function Reload-SDModule {
     exit
 }
 
-Function Get-SDWorkspaceStatus ([switch]$Email, [string[]]$EmailAddresses) {
+Function Get-SDWorkspaceStatus ([string[]]$EmailAddresses = @(), [string]$SmtpServer) {
     #Get the list of workspaces
     $Workspaces = Get-SDWorkspace
 
@@ -764,11 +764,124 @@ Function Get-SDWorkspaceStatus ([switch]$Email, [string[]]$EmailAddresses) {
     }
 
     $WorkspaceReport |FT
+
+    #Check if we're emailing the report
+    if($EmailAddresses.Count -gt 0) {
+        #Check if we have the SMTP server to use
+        if($SmtpServer -eq $null -and $global:SmtpServer -eq $null) {
+            throw "Email reports cannot be sent without an SMTP server specified.  Use the -SmtpServer parameter to supply one or provide it in the `$global:SmtpServer module variable."
+        }
+
+        #If the SMTP server wasn't supplied and it's set globally, inherit global
+        if($SmtpServer -eq $null -and $global:SmtpServer -ne $null) {
+            $SmtpServer = $global:SmtpServer
+        }
+
+        #Validate each address is formatted valid
+        $EmailAddresses |%{
+            if($_.Contains("@") -eq $false -or $_.Contains(".") -eq $false) {
+                throw "$_ is an invalid email address.  You must supply valid email addresses to send email reports."
+            }
+        }
+
+        #Define the template
+        $EmailTemplate = @"
+            <html>
+                <head>
+                    <style type="text/css">
+                        body {
+                            font-family: 'Proxima Sans', 'Open Sans', Calibri, sans-serif, arial;
+                            font-size: 12pt;
+                        }
+
+                        table {
+                            margin: 15px;
+                            padding: 0px;
+                            font-family: 'Fira Code', 'Consolas', 'Lucida Console', 'Courier New', Courier, Fixedsys, Terminal;
+                            width: 100%;
+                            border: none;
+                            border-collapse: collapse;
+                        }
+
+                        .header {
+                            width: 100%;
+                            background-color: #00263e;
+                            color: white;
+                            font-family: 'Proxima Sans', 'Open Sans', Calibri, sans-serif, Arial;
+                            font-weight: 300;
+                            font-size: 14pt;
+                            border-bottom: 1px solid darkgray;
+                        }
+
+                        td {
+                            padding-right: 5px;
+                            padding-left: 5px;
+                            min-width: 150px;
+                        }
+
+                        .light {
+                            font-size: 12pt;
+                            background-color: white;
+                            color: black;
+                        }
+
+                        .dark {
+                            font-size: 12pt;
+                            background-color: rgb(245, 245, 245);
+                            color: black;
+                        }
+
+                        .light td, .dark td {
+                            border-right: dotted 1px rgb(215, 215, 215);
+                        }
+                    </style>
+                </head>
+                <body>
+                    <table>
+                        <tr class="header">
+                            <td>Ticket Number</td>
+                            <td>Opened</td>
+                            <td>Discovery Mailbox</td>
+                            <td>Delegate</td>
+                            <td>Preview Ready</td>
+                        </tr>
+                        {TableRows}
+                    </table>
+                </body>
+            </html>
+"@
+        $TableRowTemplate = "<tr class=`"{RowColor}`"><td>{TicketNumber}</td><td>{Opened}</td><td>{DiscoveryMailbox}</td><td>{Delegate}</td><td>{Preview}</td></tr>"
+
+        $TableRows = ""
+        
+        #Build table
+        $i = 1
+        $WorkspaceReport |%{
+            #Set row style
+            if($i % 2 -eq 0) {
+                $ThisRow = $TableRowTemplate.Replace("{RowColor}","light")
+            } else {
+                $ThisRow = $TableRowTemplate.Replace("{RowColor}","dark")
+            }
+
+            #Add row
+            $TableRows += $ThisRow.Replace("{TicketNumber}",$_.TicketNumber).Replace("{Opened}",$_.Opened).Replace("{DiscoveryMailbox}",$_.DiscoveryMailbox).Replace("{Delegate}",$_.Delegate).Replace("{Preview}",$_.Preview)
+        }
+
+        #Build the email
+        $ThisEmail = $EmailTemplate.Replace("{TableRows}",$TableRows)
+
+        #Send the email to recipients
+        $EmailAddresses |%{
+            Send-MailMessage -To $_ -SmtpServer $SmtpServer -BodyAsHtml -Body $ThisEmail -Subject "Search and Destroy Workspace Report for $([System.DateTime]::Today.ToString("MM/dd/yyyy"))" -UseSsl
+        }
+    }
 }
 
 $global:ForbiddenCharacters = @("``", "[", "]", "(", ")", ":", "$", "@", "{", "}", "`"", "`'")
+$global:SmtpServer = $null
 $ProductName = "Search and Destroy Module"
-$ProductVersion = "1.2.5.0189"
+$ProductVersion = "1.2.5.0190"
 
 #Set background
 $Host.UI.RawUI.BackgroundColor = "Black"
