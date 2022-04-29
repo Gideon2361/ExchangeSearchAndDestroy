@@ -9,6 +9,9 @@ The module must be configured with the names of your Exchange servers in order f
 >            "server2.domain.local",\
 >            "server3.domain.local"\
 >        )
+
+Set your email server to use for email reports with the following global variable:
+> $global:SmtpServer = $null
         
 # Usage Instructions
 To manually import into PowerShell, you must first set your Execution Policy to bypass.  The below command will do so temporarily only for the PowerShell session you're running in without affecting the overall security posture of your machine.
