@@ -767,14 +767,16 @@ Function Get-SDWorkspaceStatus ([string[]]$EmailAddresses = @(), [string]$SmtpSe
 
     #Check if we're emailing the report
     if($EmailAddresses.Count -gt 0) {
+        $MySmtpServer = $SmtpServer
+
         #Check if we have the SMTP server to use
         if($SmtpServer -eq $null -and $global:SmtpServer -eq $null) {
             throw "Email reports cannot be sent without an SMTP server specified.  Use the -SmtpServer parameter to supply one or provide it in the `$global:SmtpServer module variable."
         }
 
         #If the SMTP server wasn't supplied and it's set globally, inherit global
-        if($SmtpServer -eq $null -and $global:SmtpServer -ne $null) {
-            $SmtpServer = $global:SmtpServer
+        if(($MySmtpServer -eq $null -or $MySmtpServer -eq "") -and $global:SmtpServer -ne $null) {
+            $MySmtpServer = $global:SmtpServer
         }
 
         #Validate each address is formatted valid
@@ -873,15 +875,16 @@ Function Get-SDWorkspaceStatus ([string[]]$EmailAddresses = @(), [string]$SmtpSe
 
         #Send the email to recipients
         $EmailAddresses |%{
-            Send-MailMessage -To $_ -SmtpServer $SmtpServer -BodyAsHtml -Body $ThisEmail -Subject "Search and Destroy Workspace Report for $([System.DateTime]::Today.ToString("MM/dd/yyyy"))" -UseSsl
+            Send-MailMessage -To $_ -SmtpServer $MySmtpServer -BodyAsHtml -Body $ThisEmail -Subject "Search and Destroy Workspace Report for $([System.DateTime]::Today.ToString("MM/dd/yyyy"))" -UseSsl -From $global:MailFrom
         }
     }
 }
 
 $global:ForbiddenCharacters = @("``", "[", "]", "(", ")", ":", "$", "@", "{", "}", "`"", "`'")
 $global:SmtpServer = $null
+$global:MailFrom = "email@domain.com"
 $ProductName = "Search and Destroy Module"
-$ProductVersion = "1.2.5.0190"
+$ProductVersion = "1.2.5.0193"
 
 #Set background
 $Host.UI.RawUI.BackgroundColor = "Black"
