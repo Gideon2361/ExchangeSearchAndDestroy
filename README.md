@@ -2,17 +2,23 @@
 Search and Destroy functionality for emails in Microsoft Exchange 2019
 
 # Setup Before Use
-The module must be configured with the names of your Exchange servers in order for it to work correctly.  To do this, change the following array in the Init-SDWorkspace function.
+If your account does not have sufficient rights in Active Directory to read the Exchange configuration objects, you can manually enter your Exchange servers in this variable.
 
-> $Servers = @(\
+> $global:ExchangeServers = @(\
 >             "server1.domain.local",\
 >            "server2.domain.local",\
 >            "server3.domain.local"\
 >        )
 
-Set your email server to use for email reports with the following global variable:
+Set your email server to use for email reports with the following global variable.
 > $global:SmtpServer = $null
         
+Set the email address to send emails from here.
+> $global:MailFrom = \"from@email.com\"
+
+Enable or disable Exchange server autodiscovery from Active Directory with the below variable.  $true enables it, $false disables it.
+> $global:UseAutoDiscovery = $true
+
 # Usage Instructions
 To manually import into PowerShell, you must first set your Execution Policy to bypass.  The below command will do so temporarily only for the PowerShell session you're running in without affecting the overall security posture of your machine.
   > Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process -Force
