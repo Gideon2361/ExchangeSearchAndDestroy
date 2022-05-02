@@ -22,7 +22,7 @@ $Host.UI.RawUI.ForegroundColor = "White"		# Console foreground color
 ########
 $global:ForbiddenCharacters = @("``", "[", "]", "(", ")", ":", "$", "@", "{", "}", "`"", "`'")				# These get escaped when found in input
 $global:ProductName = "Search and Destroy Module"
-$global:ProductVersion = "1.2.6.0201"
+$global:ProductVersion = "1.2.6.0202"
 $global:Credentials = Get-Credential -Message "Administrative Credentials"
 
 Function Prompt {
@@ -40,7 +40,7 @@ Function Get-ADExchangeServers {
 
         # Create searcher
         $Searcher = [System.DirectoryServices.DirectorySearcher]::new()
-        $Searcher.SearchRoot = [System.DirectoryServices.DirectoryEntry]::new(([adsi]"LDAP://$ConfigDN").Path, $global:Credential.UserName, $global:Credential.GetNetworkCredential().Password)
+        $Searcher.SearchRoot = [System.DirectoryServices.DirectoryEntry]::new(([adsi]"LDAP://$ConfigDN").Path, $global:Credentials.UserName, $global:Credentials.GetNetworkCredential().Password)
         $Searcher.Filter = "(&(objectClass=msExchPowerShellVirtualDirectory)(cn=*Default*))"
         $Searcher.PropertiesToLoad.Add('msExchInternalHostName') |Out-Null
 
