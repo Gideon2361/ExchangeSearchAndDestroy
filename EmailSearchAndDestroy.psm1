@@ -13,6 +13,8 @@ $global:ExchangeServers = @(				# List of Exchange servers to use if autodiscove
 
 $global:UseAutoDiscovery = $true			# Enables the use of Active Directory to identify Exchange servers automatically
 
+$global:InheritCredentials = $false			# Enable to use Windows credentials instead of prompting for credentials
+
 #Set Colors
 $Host.UI.RawUI.BackgroundColor = "Black"		# Console background color
 $Host.UI.RawUI.ForegroundColor = "White"		# Console foreground color
@@ -22,8 +24,11 @@ $Host.UI.RawUI.ForegroundColor = "White"		# Console foreground color
 ########
 $global:ForbiddenCharacters = @("``", "[", "]", "(", ")", ":", "$", "@", "{", "}", "`"", "`'")				# These get escaped when found in input
 $global:ProductName = "Search and Destroy Module"
-$global:ProductVersion = "1.2.6.0202"
-$global:Credentials = Get-Credential -Message "Administrative Credentials"
+$global:ProductVersion = "1.2.6.0205"
+
+if($global:InheritCredentials -eq $false) {
+    $global:Credentials = Get-Credential -Message "Administrative Credentials"
+}
 
 Function Prompt {
     Write-Host "[PS] " -NoNewline -ForegroundColor Yellow
@@ -77,7 +82,11 @@ Function Init-SDWorkspace {
 
         while($Connected -eq $false) {
             if($global:UseAutoDiscovery) {
-                $Servers = Get-ADExchangeServers -Credential $global:Credentials
+                if($global:InheritCredentials) {
+                    $Servers = Get-ADExchangeServers
+                } else {
+                    $Servers = Get-ADExchangeServers -Credential $global:Credentials
+                }
 
                 if($Servers -ne $null) {
                     if($Servers.Count -gt 0) {
@@ -93,9 +102,15 @@ Function Init-SDWorkspace {
             }
 
             if($global:ExchangeServers[$i].ToLower().Contains("http")) {
-                $Session = New-PSSession -Name E19 -ConfigurationName Microsoft.Exchange -ConnectionUri $global:ExchangeServers[$i] -Credential $global:Credentials -WarningAction SilentlyContinue -ErrorAction SilentlyContinue
+                $global:ServerUri = $global:ExchangeServers[$i]
             } else {
-                $Session = New-PSSession -Name E19 -ConfigurationName Microsoft.Exchange -ConnectionUri "http://$($global:ExchangeServers[$i])/powershell/" -Credential $global:Credentials -WarningAction SilentlyContinue -ErrorAction SilentlyContinue
+                $global:ServerUri = "http://$($global:ExchangeServers[$i])/powershell/"
+            }
+
+            if($global:InheritCredentials) {
+                $Session = New-PSSession -Name E19 -ConfigurationName Microsoft.Exchange -ConnectionUri $global:ServerUri -WarningAction SilentlyContinue -ErrorAction SilentlyContinue
+            } else {
+                $Session = New-PSSession -Name E19 -ConfigurationName Microsoft.Exchange -ConnectionUri $global:ServerUri -Credential $global:Credentials -WarningAction SilentlyContinue -ErrorAction SilentlyContinue
             }
 
             if($Session -ne $null) {
@@ -191,6 +206,8 @@ Function Init-SDWorkspace {
         Write-Host "---------------------------------------------------------------------------------------------------------------------------------------------"
         Write-Host ""
 
+    } else {
+        Write-Host "Connection to Microsoft Exchange failed or the credentials provided do not have the necessary access.  Operations will not execute as expected." -ForegroundColor Red
     }
 }
 
