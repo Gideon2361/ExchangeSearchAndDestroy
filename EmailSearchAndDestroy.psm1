@@ -13,7 +13,7 @@ $global:ExchangeServers = @(				# List of Exchange servers to use if autodiscove
 
 $global:UseAutoDiscovery = $true			# Enables the use of Active Directory to identify Exchange servers automatically
 
-$global:InheritCredentials = $false			# Enable to use Windows credentials instead of prompting for credentials
+$global:InheritCredentials = $true			# Enable to use Windows credentials instead of prompting for credentials
 
 #Set Colors
 $Host.UI.RawUI.BackgroundColor = "Black"		# Console background color
@@ -24,7 +24,7 @@ $Host.UI.RawUI.ForegroundColor = "White"		# Console foreground color
 ########
 $global:ForbiddenCharacters = @("``", "[", "]", "(", ")", ":", "$", "@", "{", "}", "`"", "`'")				# These get escaped when found in input
 $global:ProductName = "Search and Destroy Module"
-$global:ProductVersion = "1.2.6.0205"
+$global:ProductVersion = "1.2.6.0206"
 
 if($global:InheritCredentials -eq $false) {
     $global:Credentials = Get-Credential -Message "Administrative Credentials"
@@ -45,7 +45,13 @@ Function Get-ADExchangeServers {
 
         # Create searcher
         $Searcher = [System.DirectoryServices.DirectorySearcher]::new()
-        $Searcher.SearchRoot = [System.DirectoryServices.DirectoryEntry]::new(([adsi]"LDAP://$ConfigDN").Path, $global:Credentials.UserName, $global:Credentials.GetNetworkCredential().Password)
+
+        if($global:InheritCredentials) {
+            $Searcher.SearchRoot = [System.DirectoryServices.DirectoryEntry]::new(([adsi]"LDAP://$ConfigDN").Path)
+        } else {
+            $Searcher.SearchRoot = [System.DirectoryServices.DirectoryEntry]::new(([adsi]"LDAP://$ConfigDN").Path, $global:Credentials.UserName, $global:Credentials.GetNetworkCredential().Password)
+        }
+
         $Searcher.Filter = "(&(objectClass=msExchPowerShellVirtualDirectory)(cn=*Default*))"
         $Searcher.PropertiesToLoad.Add('msExchInternalHostName') |Out-Null
 
@@ -82,11 +88,7 @@ Function Init-SDWorkspace {
 
         while($Connected -eq $false) {
             if($global:UseAutoDiscovery) {
-                if($global:InheritCredentials) {
-                    $Servers = Get-ADExchangeServers
-                } else {
-                    $Servers = Get-ADExchangeServers -Credential $global:Credentials
-                }
+                $Servers = Get-ADExchangeServers
 
                 if($Servers -ne $null) {
                     if($Servers.Count -gt 0) {
