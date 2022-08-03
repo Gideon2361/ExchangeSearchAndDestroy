@@ -19,6 +19,9 @@ Set the email address to send emails from here.
 Enable or disable Exchange server autodiscovery from Active Directory with the below variable.  $true enables it, $false disables it.
 > $global:UseAutoDiscovery = $true
 
+Enable or disable the use of inherited credentials.  If this is set to $true, the module will use the credentials provided by the Windows session rather than prompting for credentials.  This is useful for automation tasks that can't supply credentials, or in environments where the user account used to log into Windows has rights to manage Exchange.
+> $global:InheritCredentials = $false
+
 # Usage Instructions
 To manually import into PowerShell, you must first set your Execution Policy to bypass.  The below command will do so temporarily only for the PowerShell session you're running in without affecting the overall security posture of your machine.
   > Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process -Force
